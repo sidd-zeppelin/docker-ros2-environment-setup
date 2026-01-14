@@ -21,6 +21,8 @@ You now have a ROS2 Humble system on the new machine.
 
 ---
 
+## The Guide:
+
 This repository explains how to build a clean, isolated, and reusable ROS 2 Humble
 environment using Docker.
 
