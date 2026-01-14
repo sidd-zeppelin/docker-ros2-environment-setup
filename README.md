@@ -15,29 +15,7 @@ and run to get the ros2 humble environment:
 docker run -it siddzeppelin/ros2-humble-sidd-zeppelin
 ```
 
-you have a running docker environment.
-
-OR
-
-download the image file in this repository and place it in your directory and run:
-```
-docker load < ros2-humble-sidd-zeppelin.tar
-```
-Check that the image exists:
-```
-docker images
-```
-
-You should see:
-```
-ros2-humble-sidd-zeppelin
-```
-Run it:
-
-```
-docker run -it ros2-humble-sidd-zeppelin
-```
-
+You have a running docker environment.
 You now have a ROS2 Humble system on the new machine.
 
 
