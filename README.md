@@ -1,230 +1,396 @@
 # ROS 2 Humble in Docker — A From-First-Principles Guide
 
-This repository describes how to build a fully isolated, reproducible ROS 2 Humble
-environment using Docker. The goal is not just to “install ROS”, but to understand
-where every binary, key, repository, and dependency comes from.
+This repository explains how to build a clean, isolated, and reusable ROS 2 Humble
+environment using Docker.
 
-What you end up with is a frozen robot operating system:
-Linux + ROS + DDS + your code, portable to any machine.
+The goal is not just to “install ROS”, but to understand:
+- where ROS comes from
+- how Ubuntu gets ROS packages
+- how cryptographic trust works
+- and how everything is frozen into a portable robot OS
 
-────────────────────────────────────────────────────────────────────────────
+In the end, you will have:
 
-1. WHY DO WE USE DOCKER FOR ROS?
+Linux + ROS 2 + DDS + your code  
+all inside a Docker image that can run anywhere.
 
-ROS is not a normal application. It is a distributed middleware system that depends on:
+---
 
-- the Linux C library (glibc)
-- the C++ ABI (libstdc++)
-- Python ABI
+## 1. Why we use Docker for ROS
+
+ROS is not just a program. It depends on many low-level things:
+
+- Linux system libraries (glibc)
+- C++ runtime
+- Python version
 - DDS networking
-- the kernel clock and networking stack
+- system clocks and networking
 
-If any of these change (Ubuntu upgrade, Python update, driver install),
-ROS nodes start crashing in unpredictable ways.
+If any of these change (Ubuntu upgrade, Python update, driver install), ROS can
+break in strange ways.
 
-Docker solves this by freezing the entire user-space OS.
+Docker solves this by freezing the whole Linux environment.
 
-Your computer runs:
-  Linux kernel
+Your system becomes:
+```
+Linux kernel
     → Docker
-       → Ubuntu 22.04
-            → ROS 2 Humble
-                 → Your robot software
+    → Ubuntu 22.04
+    → ROS 2 Humble
+    → Your robot code
+```
 
-Only the kernel is shared. Everything else is isolated and deterministic.
+Only the kernel is shared. Everything else is locked in place.
 
 This is how professional robots are deployed.
 
-────────────────────────────────────────────────────────────────────────────
+---
 
-2. WHAT DOCKER REALLY IS
+## 2. What Docker really is
 
 Docker is not a virtual machine.
 
-It does not emulate hardware.
-It uses Linux kernel features to isolate:
+It does not pretend to be new hardware.
+Instead, it uses Linux to isolate:
 
-- filesystem
-- processes
-- networking
+- files
+- running programs
+- networks
 - users
 - environment variables
 
-Each container thinks it is its own Linux computer, but it runs at native speed.
+Each container feels like its own Linux computer, but it runs at full speed.
 
-This makes Docker ideal for robotics, because ROS needs direct access to
-networking, clocks, and devices.
+This is perfect for ROS, which needs real networking and real timing.
 
-────────────────────────────────────────────────────────────────────────────
+---
 
-3. WHY UBUNTU 22.04 IS REQUIRED
+## 3. Why Ubuntu 22.04 is required
 
-ROS 2 Humble is built against Ubuntu 22.04 (Jammy).
+ROS 2 Humble was built for Ubuntu 22.04 (Jammy).
 
-The ROS build farm compiled Humble using:
-
-- glibc from Ubuntu 22.04
+The ROS build servers used:
+- glibc from 22.04
 - GCC 11
 - Python 3.10
-- DDS libraries built for Jammy
+- DDS libraries for Jammy
 
-If you try to run Humble on a different OS version, you get:
-- ABI mismatch
-- DDS crashes
-- Python module failures
+If you use another OS version, things will break:
+- DDS may crash
+- libraries may not match
+- Python modules may fail
 
-Therefore our Docker image must use Ubuntu 22.04.
+So the Docker container must use Ubuntu 22.04.
 
-────────────────────────────────────────────────────────────────────────────
+---
 
-4. WHERE ROS BINARIES COME FROM
+## 4. Where ROS packages come from
 
-ROS packages are not downloaded from GitHub.
+ROS packages do not come from GitHub.
 
 They come from the ROS build farm:
+```
+https://packages.ros.org/
+```
 
-  https://packages.ros.org
-
-This is run by Open Robotics, the organization that owns ROS.
+This is run by Open Robotics, the group that maintains ROS.
 
 They:
-- build ROS for each Ubuntu release
+- build ROS for each Ubuntu version
 - test everything
-- cryptographically sign the binaries
-- publish them as .deb packages
+- sign the packages
+- publish them as `.deb` files
 
-This is exactly how Ubuntu packages are distributed.
+This works the same way Ubuntu publishes its own packages.
 
-────────────────────────────────────────────────────────────────────────────
+---
 
-5. HOW CRYPTOGRAPHIC TRUST WORKS
+## 5. How trust works
 
-Ubuntu will only install packages that are cryptographically signed.
+Ubuntu only installs packages that are signed.
 
 ROS provides its public signing key here:
-  https://github.com/ros/rosdistro
+```
+https://github.com/ros/rosdistro
+```
 
-This key is installed into:
-  /usr/share/keyrings/ros-archive-keyring.gpg
+This key is saved on your system at:
+```
+/usr/share/keyrings/ros-archive-keyring.gpg
+```
 
-When apt downloads ROS packages, it verifies that:
-- the package was signed
-- the signature matches Open Robotics
 
-This prevents malicious robot software from being installed.
+When Ubuntu downloads a ROS package, it checks:
+- was it signed?
+- does the signature match Open Robotics?
 
-────────────────────────────────────────────────────────────────────────────
+If not, the package is rejected.
 
-6. BUILDING THE DOCKER IMAGE
+This protects your robot from bad or fake software.
 
-Create a file called Dockerfile:
+---
 
-FROM ubuntu:22.04
+## 6. Building the ROS Docker environment
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV LANG=en_US.UTF-8
+First, download Ubuntu 22.04:
 
-RUN apt update && apt install -y \
-    locales \
-    curl \
-    gnupg \
-    lsb-release \
-    software-properties-common \
-    build-essential
+```
+bash
+docker pull ubuntu:22.04
+```
+Now start a fresh container:
+```
+docker run -it --name ros2_builder ubuntu:22.04
+```
+You are now inside a new Linux system.
 
-RUN locale-gen en_US en_US.UTF-8
-RUN update-locale LANG=en_US.UTF-8
+Update package lists:
+```
+apt update
+```
 
-RUN curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-    | gpg --dearmor -o /usr/share/keyrings/ros-archive-keyring.gpg
+Install basic system tools:
+```
+apt install -y locales curl gnupg lsb-release software-properties-common build-essential neovim
+```
+These packages do:
 
-RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-http://packages.ros.org/ros2/ubuntu jammy main" \
+- `locales` – enables UTF-8 (ROS needs this)
+- `curl` – downloads files
+- `gnupg` – checks signatures
+- `lsb-release` – tells Ubuntu its version name
+- `software-properties-common` – lets us add new package sources
+- `build-essential` – compiler and build tools
+- `neovim` - text editor to run inside the container
+
+Enable UTF-8:
+```
+locale-gen en_US en_US.UTF-8
+update-locale LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+```
+Add ROS signing key:
+```
+curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+ | gpg --dearmor -o /usr/share/keyrings/ros-archive-keyring.gpg
+```
+Tell Ubuntu where ROS packages live:
+```
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+http://packages.ros.org/ros2/ubuntu $(lsb_release -cs) main" \
 > /etc/apt/sources.list.d/ros2.list
-
-RUN apt update && apt install -y \
-    ros-humble-desktop \
-    python3-colcon-common-extensions
-
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
-
-WORKDIR /root
-
-────────────────────────────────────────────────────────────────────────────
-
-7. BUILD THE IMAGE
-
-docker build -t ros2-humble .
-
-This creates a reusable robot operating system image.
-
-────────────────────────────────────────────────────────────────────────────
-
-8. RUN THE CONTAINER
-
-docker run -it --name ros2_container ros2-humble
-
-Inside the container:
-
+```
+Update package lists again:
+```
+apt update
+```
+Install ROS 2 Humble:
+```
+apt install -y ros-humble-desktop
+```
+Install the ROS build system:
+```
+apt install -y python3-colcon-common-extensions
+```
+Enable ROS in every shell:
+```
+echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+source /opt/ros/humble/setup.bash
+```
+Test:
+```
 ros2
-
-If you see command output, ROS is running.
-
-────────────────────────────────────────────────────────────────────────────
-
-9. CREATING A ROS WORKSPACE
-
+```
+---
+## 7. Create a ROS workspace
+```
 mkdir -p ~/ros2_ws/src
 cd ~/ros2_ws
 colcon build
 source install/setup.bash
-
-The workspace is layered on top of ROS.
-Your code never touches /opt/ros.
-
-────────────────────────────────────────────────────────────────────────────
-
-10. WHAT COLCON DOES
-
-colcon is ROS’s build system.
-
-It:
-- reads package.xml
-- resolves dependencies
-- builds C++ and Python
-- installs binaries
-- generates ROS environment hooks
-
-It is equivalent to cmake + make + pip, but ROS-aware.
-
-────────────────────────────────────────────────────────────────────────────
-
-11. SAVING THE ENVIRONMENT
-
-After everything is installed:
-
-docker commit ros2_container ros2-humble-ready
-
-Now you can run the full robot OS anywhere:
-
+```
+This is where all your robot code will live.
+---
+## 8. Save the environment as a Docker image
+Exit the container:
+```
+exit
+```
+On your host:
+```
+docker commit ros2_builder ros2-humble-ready
+```
+Now you can run this full ROS system anywhere:
+```
 docker run -it ros2-humble-ready
-
-This gives you a complete ROS 2 Humble environment in seconds.
-
-────────────────────────────────────────────────────────────────────────────
-
-12. WHAT YOU HAVE BUILT
-
-You now own a:
-
-- cryptographically trusted
-- ABI-stable
-- DDS-enabled
+```
+---
+## 9. What you have built
+You now have a:
+- secure
+- stable
 - ROS 2 Humble
-- Dockerized robot OS
+- Docker-based
+- robot operating system
 
-This is the same architecture used by:
-- autonomous vehicles
-- drones
-- industrial arms
-- research robots
+This is how real robots, drones, and research systems are deployed.
+
+## 10. MOVING THE DOCKER IMAGE TO ANOTHER SYSTEM
+After you have created the image called
+```
+ros2-humble-ready
+```
+this image contains your full ROS 2 Humble robot OS.
+There are two ways to move this image to another computer.
+
+---
+
+# 1.OFFLINE METHOD (USB, hard drive, local copy)
+
+On the computer where the image was created, run:
+```
+docker save ros2-humble-ready > ros2-humble-ready.tar
+```
+
+This creates a file called:
+```
+ros2-humble-ready.tar
+```
+This file contains the full Ubuntu + ROS system.
+Copy this file to the other computer using a USB drive, external disk, or SCP.
+
+On the other computer, load the image:
+```
+docker load < ros2-humble-ready.tar
+```
+Check that the image exists:
+```
+docker images
+```
+
+You should see:
+```
+ros2-humble-ready
+```
+Run it:
+
+```
+docker run -it ros2-humble-ready
+```
+
+You now have the exact same ROS system on the new machine.
+---
+
+# 2. ONLINE METHOD (Docker Hub)
+
+This is useful if you want to share the robot OS with others.
+Login to Docker Hub:
+
+```
+docker login
+```
+Tag your image with your Docker Hub username:
+
+```
+docker tag ros2-humble-ready yourusername/ros2-humble-ready
+```
+
+Upload the image:
+
+```
+docker push yourusername/ros2-humble-ready
+```
+
+On any other system, download it:
+```
+docker pull yourusername/ros2-humble-ready
+```
+
+Run it:
+```
+docker run -it yourusername/ros2-humble-ready
+```
+This gives the same ROS 2 Humble environment on any machine.
+
+---
+## How to remove the container environment from scratch
+
+# 1. Stop and delete the ROS container
+First list all containers:
+```
+docker ps -a
+```
+You will see things like:
+```
+ros2_builder
+ros2_container
+```
+
+Stop them:
+```
+docker stop ros2_builder
+docker stop ros2_container
+```
+
+Now delete them:
+```
+docker rm ros2_builder
+docker rm ros2_container
+```
+This removes the running Linux machines.
+
+# 2. Delete the ROS images
+List images:
+```
+docker images
+```
+
+You will see:
+```
+ros2-humble
+ros2-humble-ready
+ubuntu
+```
+
+Remove the ROS images:
+
+```
+docker rmi ros2-humble-ready
+docker rmi ros2-humble
+```
+If Ubuntu was only used for this:
+```
+docker rmi ubuntu:22.04
+```
+
+# 3. Remove exported image files
+If you created:
+```
+ros2-humble-ready.tar
+```
+Delete it:
+```
+rm ros2-humble-ready.tar
+```
+4. Verify everything is gone
+```
+docker ps -a
+```
+should be empty or not show ROS containers.
+
+```
+docker images
+```
+should not show ros2-humble or ros2-humble-ready.
+---
+Your system is now clean.
+
+No ROS
+No Ubuntu
+No containers
+No images
+
+Like nothing ever happened.
+
+If you ever want to rebuild it, you now know how from scratch.
+---
