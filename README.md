@@ -1,4 +1,4 @@
-### ROS 2 Humble in Docker — A From-First-Principles Guide
+# ROS 2 Humble in Docker — A From-First-Principles Guide
 - A guide by https://github.com/sidd-zeppelin
 
 This repository helps you create ROS2 Humble environment in any system and how to save it to use it in other different systems.
@@ -273,7 +273,7 @@ There are two ways to move this image to another computer.
 
 ---
 
-# 1.OFFLINE METHOD (USB, hard drive, local copy)
+### 1.OFFLINE METHOD (USB, hard drive, local copy)
 
 On the computer where the image was created, run:
 ```
@@ -310,7 +310,7 @@ You now have the exact same ROS system on the new machine.
 
 ---
 
-# 2. ONLINE METHOD (Docker Hub)
+### 2. ONLINE METHOD (Docker Hub)
 
 This is useful if you want to share the robot OS with others.
 Login to Docker Hub:
@@ -345,7 +345,7 @@ This gives the same ROS 2 Humble environment on any machine.
 
 ## How to remove the container environment from scratch
 
-# 1. Stop and delete the ROS container
+### 1. Stop and delete the ROS container
 First list all containers:
 ```
 docker ps -a
@@ -369,7 +369,7 @@ docker rm {image_name}
 ```
 This removes the running Linux machines.
 
-# 2. Delete the ROS images
+### 2. Delete the ROS images
 List images:
 ```
 docker images
@@ -393,7 +393,7 @@ If Ubuntu was only used for this:
 docker rmi ubuntu:22.04
 ```
 
-# 3. Remove exported image files
+### 3. Remove exported image files
 If you created:
 ```
 {package_name}.tar
