@@ -235,7 +235,9 @@ colcon build
 source install/setup.bash
 ```
 This is where all your robot code will live.
+
 ---
+
 ## 8. Save the environment as a Docker image
 Exit the container:
 ```
