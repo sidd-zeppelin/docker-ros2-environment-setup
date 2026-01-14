@@ -1,4 +1,47 @@
-# ROS 2 Humble in Docker — A From-First-Principles Guide
+### ROS 2 Humble in Docker — A From-First-Principles Guide
+- A guide by https://github.com/sidd-zeppelin
+
+This repository helps you create ROS2 Humble environment in any system and how to save it to use it in other different systems.
+Text editor installed in the environment: neovim
+
+---
+## If you wanna skip this tutorial and just setup the environment, pull my ros2 environment docker file:
+
+```
+docker pull siddzeppelin/ros2-humble-sidd-zeppelin
+```
+and run to get the ros2 humble environment:
+```
+docker run -it siddzeppelin/ros2-humble-sidd-zeppelin
+```
+
+you have a running docker environment.
+
+OR
+
+download the image file in this repository and place it in your directory and run:
+```
+docker load < ros2-humble-sidd-zeppelin.tar
+```
+Check that the image exists:
+```
+docker images
+```
+
+You should see:
+```
+ros2-humble-sidd-zeppelin
+```
+Run it:
+
+```
+docker run -it ros2-humble-sidd-zeppelin
+```
+
+You now have a ROS2 Humble system on the new machine.
+
+
+---
 
 This repository explains how to build a clean, isolated, and reusable ROS 2 Humble
 environment using Docker.
@@ -140,7 +183,7 @@ docker pull ubuntu:22.04
 ```
 Now start a fresh container:
 ```
-docker run -it --name ros2_builder ubuntu:22.04
+docker run -it --name {container_name} ubuntu:22.04
 ```
 You are now inside a new Linux system.
 
@@ -201,7 +244,9 @@ Test:
 ```
 ros2
 ```
+
 ---
+
 ## 7. Create a ROS workspace
 ```
 mkdir -p ~/ros2_ws/src
@@ -218,13 +263,14 @@ exit
 ```
 On your host:
 ```
-docker commit ros2_builder ros2-humble-ready
+docker commit {container_name} {image_name}
 ```
 Now you can run this full ROS system anywhere:
 ```
-docker run -it ros2-humble-ready
+docker run -it {image_name}
 ```
 ---
+
 ## 9. What you have built
 You now have a:
 - secure
@@ -235,10 +281,12 @@ You now have a:
 
 This is how real robots, drones, and research systems are deployed.
 
+---
+
 ## 10. MOVING THE DOCKER IMAGE TO ANOTHER SYSTEM
 After you have created the image called
 ```
-ros2-humble-ready
+{image_name}
 ```
 this image contains your full ROS 2 Humble robot OS.
 There are two ways to move this image to another computer.
@@ -249,19 +297,19 @@ There are two ways to move this image to another computer.
 
 On the computer where the image was created, run:
 ```
-docker save ros2-humble-ready > ros2-humble-ready.tar
+docker save {image_name} > {package_name}.tar
 ```
 
 This creates a file called:
 ```
-ros2-humble-ready.tar
+{package_name}.tar
 ```
 This file contains the full Ubuntu + ROS system.
 Copy this file to the other computer using a USB drive, external disk, or SCP.
 
 On the other computer, load the image:
 ```
-docker load < ros2-humble-ready.tar
+docker load < {package_name}.tar
 ```
 Check that the image exists:
 ```
@@ -270,15 +318,16 @@ docker images
 
 You should see:
 ```
-ros2-humble-ready
+{image_name}
 ```
 Run it:
 
 ```
-docker run -it ros2-humble-ready
+docker run -it {image_name}
 ```
 
 You now have the exact same ROS system on the new machine.
+
 ---
 
 # 2. ONLINE METHOD (Docker Hub)
@@ -292,27 +341,28 @@ docker login
 Tag your image with your Docker Hub username:
 
 ```
-docker tag ros2-humble-ready yourusername/ros2-humble-ready
+docker tag ros2-humble-ready yourusername/{image_name}
 ```
 
 Upload the image:
 
 ```
-docker push yourusername/ros2-humble-ready
+docker push yourusername/{image_name}
 ```
 
 On any other system, download it:
 ```
-docker pull yourusername/ros2-humble-ready
+docker pull yourusername/{image_name}
 ```
 
 Run it:
 ```
-docker run -it yourusername/ros2-humble-ready
+docker run -it yourusername/{image_name}
 ```
 This gives the same ROS 2 Humble environment on any machine.
 
 ---
+
 ## How to remove the container environment from scratch
 
 # 1. Stop and delete the ROS container
@@ -322,20 +372,20 @@ docker ps -a
 ```
 You will see things like:
 ```
-ros2_builder
-ros2_container
+{container_name}
+{image_name}
 ```
 
 Stop them:
 ```
-docker stop ros2_builder
-docker stop ros2_container
+docker stop {container_name}
+docker stop {image_name}
 ```
 
 Now delete them:
 ```
-docker rm ros2_builder
-docker rm ros2_container
+docker rm {container_name}
+docker rm {image_name}
 ```
 This removes the running Linux machines.
 
@@ -347,16 +397,16 @@ docker images
 
 You will see:
 ```
-ros2-humble
-ros2-humble-ready
+{image_name}
+{container_name}
 ubuntu
 ```
 
 Remove the ROS images:
 
 ```
-docker rmi ros2-humble-ready
-docker rmi ros2-humble
+docker rmi {image_name}
+docker rmi {container_name}
 ```
 If Ubuntu was only used for this:
 ```
@@ -366,11 +416,11 @@ docker rmi ubuntu:22.04
 # 3. Remove exported image files
 If you created:
 ```
-ros2-humble-ready.tar
+{package_name}.tar
 ```
 Delete it:
 ```
-rm ros2-humble-ready.tar
+rm {package_name}.tar
 ```
 4. Verify everything is gone
 ```
@@ -382,7 +432,9 @@ should be empty or not show ROS containers.
 docker images
 ```
 should not show ros2-humble or ros2-humble-ready.
+
 ---
+
 Your system is now clean.
 
 No ROS
@@ -393,4 +445,5 @@ No images
 Like nothing ever happened.
 
 If you ever want to rebuild it, you now know how from scratch.
+
 ---
